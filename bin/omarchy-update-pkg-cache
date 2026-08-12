@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# omarchy:summary=Trim superseded versions from the pacman package cache
+# omarchy:requires-sudo=true
+
+set -e
+
+# The package cache is the only offline downgrade path. When an update breaks a
+# single package, reinstalling its previous version from here is the surgical
+# fix, where a snapshot rollback would revert every other package too.
+#
+# So trim before the packages update, never after. Afterwards the newest cached
+# version is the freshly installed one, and pruning to a single copy would take
+# the very version a broken update needs to fall back to. Beforehand the
+# installed version is normally the newest cached, so keeping two retains it
+# plus a spare once the update adds its third.
+#
+# Retention is by version order alone, never by what is installed, so that holds
+# only while the installed version is among the two newest cached. A deliberate
+# downgrade or repeated failed transactions can stack newer archives on top of
+# it, and its copy is prunable like any other.
+#
+# Running before the snapshot matters just as much on btrfs: the cache sits on
+# the snapshotted root subvolume, so a trim taken afterwards frees nothing until
+# the snapshot holding those extents ages out.
+echo -e "\e[32m\nTrim package cache\e[0m"
+sudo paccache -rk2 || echo -e "\e[33mCould not trim the package cache.\e[0m" >&2
